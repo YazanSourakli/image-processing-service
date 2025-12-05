@@ -104,7 +104,7 @@ Docker (optional)
 1. Repository klonen
 ```bash
 
-git clone [https://github.com/DEIN-USER/image-processing-service.git](https://github.com/DEIN-USER/image-processing-service.git)
+git clone [https://github.com/YazanSourakli/image-processing-service.git](https://github.com/YazanSourakli/image-processing-service.git)
 cd image-processing-service
 ```
 2. Bauen & Testen
