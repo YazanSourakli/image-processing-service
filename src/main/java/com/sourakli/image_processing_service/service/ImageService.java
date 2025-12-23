@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,5 +47,44 @@ public class ImageService {
                 .build();
         // 4. In DB speichern und zurückgeben
         return imageRepository.save(image);
+    }
+    public Image applyFilter(Long id, String filterType) throws IOException {
+        // 1. Das Original-Bild aus der DB holen
+        Image originalImage = imageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Bild nicht gefunden mit ID: " + id));
+
+        // 2. Datei von der Festplatte laden
+        File inputFile = new File(originalImage.getUrl()); 
+        BufferedImage bufferedImage = ImageIO.read(inputFile);
+
+        // 3. Filter-Logik: Graustufen
+        if ("grayscale".equalsIgnoreCase(filterType)) {
+            BufferedImage grayscaleImage = new BufferedImage(
+                    bufferedImage.getWidth(), 
+                    bufferedImage.getHeight(), 
+                    BufferedImage.TYPE_BYTE_GRAY);
+            
+            // Das Originalbild in den Graustufen-Container "malen"
+            grayscaleImage.getGraphics().drawImage(bufferedImage, 0, 0, null);
+            bufferedImage = grayscaleImage; // Ergebnis übernehmen
+        }
+        // 4. Gefiltertes Bild speichern
+        String newFileName = System.currentTimeMillis() + "_" + filterType + originalImage.getFileName();
+        Path uploadPath = Paths.get(uploadDir);
+        Path newFilePath = uploadPath.resolve(newFileName);
+
+        File outputFile = new File(newFilePath.toString());
+        ImageIO.write(bufferedImage, "jpg", outputFile);
+
+        // 5. Neuen DB-Eintrag erstellen
+        Image filteredImage = Image.builder()
+                .fileName(newFileName)
+                .contentTyp("image/jpeg")
+                .size(Files.size(newFilePath))
+                .url(newFilePath.toString().replace("\\", "/"))
+                .uploadTime(LocalDateTime.now())
+                .build();
+
+        return imageRepository.save(filteredImage);
     }
 }
