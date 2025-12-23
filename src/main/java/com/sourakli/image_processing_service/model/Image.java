@@ -10,12 +10,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Entity // Sagt Spring: "Mach daraus eine Datenbank-Tabelle"
 @Data   // Lombok: Generiert Getter, Setter, toString, etc. automatisch
 @NoArgsConstructor // Lombok: Leerer Konstruktor (braucht JPA)
 @AllArgsConstructor // Lombok: Konstruktor mit allen Argumenten
 @Builder // Lombok: Cooles Design-Pattern zum Erstellen von Objekten
+
 
 public class Image {
 
@@ -27,6 +29,7 @@ public class Image {
     private String contentTyp;
     private Long size;
     private String url;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd.MM.yyyy HH:mm:ss")
     private LocalDateTime uploadTime;
     
 
