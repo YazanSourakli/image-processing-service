@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import javax.imageio.ImageIO;
 
@@ -36,7 +37,7 @@ public class ImageService {
 
         // 2. Datei auf Festplatte speichern
         // Trick: Wir nutzen System.currentTimeMillis() damit Dateinamen eindeutig bleiben
-        String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        String fileName = generateFileName(file.getOriginalFilename(), null);
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
 
@@ -99,7 +100,7 @@ public class ImageService {
             }
         }
         // 4. Gefiltertes Bild speichern
-        String newFileName = System.currentTimeMillis() + "_" + filterType + originalImage.getFileName();
+        String newFileName = generateFileName(originalImage.getFileName(), filterType);
         Path uploadPath = Paths.get(uploadDir);
         Path newFilePath = uploadPath.resolve(newFileName);
 
@@ -116,5 +117,12 @@ public class ImageService {
                 .build();
 
         return imageRepository.save(filteredImage);
-    }
+    } // Ende applyFilter
+    // Hilfsmethode für lesbare Dateinamen
+    private String generateFileName(String originalFileName, String suffix) {
+    String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+    // Falls ein Suffix (z.B. "sepia") da ist, fügen wir es ein, sonst nur den Timestamp
+    String prefix = (suffix != null && !suffix.isEmpty()) ? timestamp + "_" + suffix + "_" : timestamp + "_";
+    return prefix + originalFileName;
+}
 }
