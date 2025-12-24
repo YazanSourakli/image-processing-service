@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class ImageService {
 
     private final ImageRepository imageRepository;
+    private final FilterService filterService; // Dependency Injection
     // Hier speichern wir die Bilder Lokal
     private final String uploadDir ="uploads/";
 
@@ -61,43 +62,13 @@ public class ImageService {
         File inputFile = new File(originalImage.getUrl()); 
         BufferedImage bufferedImage = ImageIO.read(inputFile);
 
-        // 3. Filter-Logik: Graustufen
+        // 3. Filter anwenden (Delegation an den FilterService)
         if ("grayscale".equalsIgnoreCase(filterType)) {
-            BufferedImage grayscaleImage = new BufferedImage(
-                    bufferedImage.getWidth(), 
-                    bufferedImage.getHeight(), 
-                    BufferedImage.TYPE_BYTE_GRAY);
-            
-            // Das Originalbild in den Graustufen-Container "malen"
-            grayscaleImage.getGraphics().drawImage(bufferedImage, 0, 0, null);
-            bufferedImage = grayscaleImage; // Ergebnis übernehmen
-        } else if ("sepia".equalsIgnoreCase(filterType)){
-            int width = bufferedImage.getWidth();
-            int height = bufferedImage.getHeight();
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int p = bufferedImage.getRGB(x,y);
-
-                    int a = (p>>24)&0xff;
-                    int r = (p>>16)&0xff;
-                    int g = (p>>8)&0xff;
-                    int b = p&0xff;
-
-                    // Neue RGB-Werte berechnen
-                    int tr = (int)(0.393*r + 0.769*g + 0.189*b);
-                    int tg = (int)(0.349*r + 0.686*g + 0.168*b);
-                    int tb = (int)(0.272*r + 0.534*g + 0.131*b);
-
-                    // Werte begrenzen
-                    if(tr > 255){ r = 255; } else { r = tr; }
-                    if(tg > 255){ g = 255; } else { g = tg; }
-                    if(tb > 255){ b = 255; } else { b = tb; }
-
-                    // Setze neuen Pixelwert
-                    p = (a<<24) | (r<<16) | (g<<8) | b;
-                    bufferedImage.setRGB(x, y, p);
-                }
-            }
+            bufferedImage = filterService.applyGrayscale(bufferedImage);
+        } else if ("sepia".equalsIgnoreCase(filterType)) {
+            bufferedImage = filterService.applySepia(bufferedImage);
+        } else {
+             throw new IllegalArgumentException("Unbekannter Filter: " + filterType);
         }
         // 4. Gefiltertes Bild speichern
         String newFileName = generateFileName(originalImage.getFileName(), filterType);
@@ -118,6 +89,7 @@ public class ImageService {
 
         return imageRepository.save(filteredImage);
     } // Ende applyFilter
+
     // Hilfsmethode für lesbare Dateinamen
     private String generateFileName(String originalFileName, String suffix) {
     String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
