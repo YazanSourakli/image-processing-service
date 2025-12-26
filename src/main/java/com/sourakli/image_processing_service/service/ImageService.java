@@ -3,7 +3,7 @@ package com.sourakli.image_processing_service.service;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.nio.file.Files; // Import für Logging
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 
 import javax.imageio.ImageIO;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,22 +19,31 @@ import com.sourakli.image_processing_service.model.Image;
 import com.sourakli.image_processing_service.repository.ImageRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Service
 @RequiredArgsConstructor // Erstellt Konstruktor für alle final Felder (Dependency Injection)
+@Slf4j
 public class ImageService {
 
     private final ImageRepository imageRepository;
     private final FilterService filterService; // Dependency Injection
     // Hier speichern wir die Bilder Lokal
-    private final String uploadDir ="uploads/";
+    @Value("${image.upload.dir}") 
+    private String uploadDir;
 
     public Image uploadImage(MultipartFile file) throws IOException {
+        // 0. Validierung: Datei darf nicht leer sein
+        if (file.isEmpty()) {
+            log.warn("Nutzer hat versucht, eine leere Datei hochzuladen.");
+            throw new IllegalArgumentException("Die hochgeladene Datei darf nicht leer sein.");
+        }
         // 1. Ordner erstellen, falls nicht existent
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
+            log.info("Upload-Verzeichnis erstellt: {}", uploadDir);
         }
 
         // 2. Datei auf Festplatte speichern
@@ -42,6 +52,7 @@ public class ImageService {
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
 
+        log.info("Datei erfolgreich gespeichert: {}", fileName);
         // 3. Datenbank-Eintrag erstellen (Entity bauen)        
         Image image = Image.builder()
                 .fileName(fileName)

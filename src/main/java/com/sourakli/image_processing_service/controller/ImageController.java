@@ -3,6 +3,7 @@ package com.sourakli.image_processing_service.controller;
 import java.io.IOException;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +28,7 @@ public class ImageController {
             Image savedImage = imageService.uploadImage(file);
             return ResponseEntity.ok(savedImage);
         } catch (IOException e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
     }
@@ -44,4 +46,9 @@ public class ImageController {
                 return ResponseEntity.status(404).build(); // Bild nicht gefunden
             }
         }
+    
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleInvalidArguments(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body("Fehler: " + e.getMessage());
+    }
 }
