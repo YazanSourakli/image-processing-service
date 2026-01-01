@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays; 
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -33,35 +35,48 @@ public class ImageService {
     @Value("${image.upload.dir}") 
     private String uploadDir;
 
+    // Liste der erlaubten Content-Types
+    private static final List<String> ALLOWED_CONTENT_TYPES = Arrays.asList(
+            "image/jpeg", 
+            "image/png", 
+            "image/jpg"
+    );
+
     public Image uploadImage(MultipartFile file) throws IOException {
-        // 0. Validierung: Datei darf nicht leer sein
+        // 1. Validierung: Datei darf nicht leer sein
         if (file.isEmpty()) {
             log.warn("Nutzer hat versucht, eine leere Datei hochzuladen.");
             throw new IllegalArgumentException("Die hochgeladene Datei darf nicht leer sein.");
         }
-        // 1. Ordner erstellen, falls nicht existent
+        // 2. Validierung: Erlaubte Content-Types prüfen
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
+            log.warn("Ungültiger Dateityp versucht: {}", contentType);
+            throw new IllegalArgumentException("Ungültiger Dateityp! Erlaubt sind nur: " + ALLOWED_CONTENT_TYPES);
+        }
+        // 3. Ordner erstellen, falls nicht existent
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
             log.info("Upload-Verzeichnis erstellt: {}", uploadDir);
         }
 
-        // 2. Datei auf Festplatte speichern
+        // 4. Datei auf Festplatte speichern
         // Trick: Wir nutzen System.currentTimeMillis() damit Dateinamen eindeutig bleiben
         String fileName = generateFileName(file.getOriginalFilename(), null);
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
 
         log.info("Datei erfolgreich gespeichert: {}", fileName);
-        // 3. Datenbank-Eintrag erstellen (Entity bauen)        
+        // 5. Datenbank-Eintrag erstellen (Entity bauen)        
         Image image = Image.builder()
                 .fileName(fileName)
-                .contentTyp(file.getContentType())
+                .contentTyp(contentType)
                 .size(file.getSize())
                 .url(filePath.toString().replace("\\", "/"))
                 .uploadTime(LocalDateTime.now())
                 .build();
-        // 4. In DB speichern und zurückgeben
+        // 6. In DB speichern und zurückgeben
         return imageRepository.save(image);
     }
     public Image applyFilter(Long id, String filterType) throws IOException {
