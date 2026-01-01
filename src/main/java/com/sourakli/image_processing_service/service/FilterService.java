@@ -5,8 +5,19 @@ import java.awt.image.BufferedImage;
 import org.springframework.stereotype.Service;
 
 
+/**
+ * Enthält die mathematischen Algorithmen zur Bildmanipulation.
+ * Arbeitet direkt auf den Pixeldaten (BufferedImage).
+ */
 @Service
 public class FilterService {
+    /**
+     * Konvertiert ein Farbbild in Graustufen.
+     * Nutzt den Standard-Typ TYPE_BYTE_GRAY für performante Umwandlung.
+     *
+     * @param original Das Originalbild
+     * @return Ein neues BufferedImage in Graustufen
+     */
     public BufferedImage applyGrayscale(BufferedImage original) {
         BufferedImage grayscaleImage = new BufferedImage(
                 original.getWidth(),
@@ -16,6 +27,13 @@ public class FilterService {
         return grayscaleImage;
     }
 
+    /**
+     * Wendet einen Sepia-Effekt (altmodischer, gelb-brauner Look) an.
+     * Iteriert über jeden Pixel und berechnet neue RGB-Werte basierend auf einer Standard-Sepia-Formel.
+     *
+     * @param original Das Originalbild (wird direkt modifiziert)
+     * @return Das modifizierte Bild im Sepia-Look
+     */
     public BufferedImage applySepia(BufferedImage original) {
         int width = original.getWidth();
         int height = original.getHeight();
