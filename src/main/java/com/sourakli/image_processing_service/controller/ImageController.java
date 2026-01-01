@@ -16,12 +16,24 @@ import com.sourakli.image_processing_service.service.ImageService;
 
 import lombok.RequiredArgsConstructor;
 
+
+/**
+ * REST-Controller für die Bildverarbeitung.
+ * Stellt Endpunkte zum Hochladen und Filtern von Bildern bereit.
+ */
 @RestController
 @RequestMapping("api/images") // Basis-URL für alle Endpunkte in diesem Controller
 @RequiredArgsConstructor
+
 public class ImageController {
     private final ImageService imageService;
 
+    /**
+     * Lädt ein neues Bild hoch.
+     *
+     * @param file Die Bilddatei als Multipart-Form-Data
+     * @return Das gespeicherte Bild mit Metadaten (HTTP 200) oder Fehler bei ungültigen Daten (HTTP 400/500)
+     */
     @PostMapping(value="/upload", consumes = "multipart/form-data")
     public ResponseEntity<Image> uploadImage(@RequestParam("file") MultipartFile file) {
         try {
@@ -32,6 +44,14 @@ public class ImageController {
             return ResponseEntity.status(500).build();
         }
     }
+
+    /**
+     * Wendet einen Filter auf ein existierendes Bild an.
+     *
+     * @param id Die ID des Bildes
+     * @param filterType Der Name des Filters (z.B. "sepia", "grayscale")
+     * @return Das bearbeitete Bild (HTTP 200) oder 404 falls nicht gefunden
+     */
     @PostMapping("/{id}/filter")
     public ResponseEntity<Image> applyFilter(
         @PathVariable long id, 
@@ -47,6 +67,9 @@ public class ImageController {
             }
         }
     
+    /**
+     * Fängt Validierungsfehler (z.B. falscher Dateityp) ab und sendet eine saubere Fehlermeldung.
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleInvalidArguments(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body("Fehler: " + e.getMessage());
