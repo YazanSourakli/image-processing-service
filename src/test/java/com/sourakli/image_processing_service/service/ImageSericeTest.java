@@ -1,7 +1,10 @@
 package com.sourakli.image_processing_service.service;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
+import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,13 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.Mock; // Für die Checks (Asserts)
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when; // Für die Checks (Asserts)
+import static org.mockito.Mockito.verify; // Für die Mocks (when, verify)
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile; // Für die Mocks (when, verify)
+import org.springframework.mock.web.MockMultipartFile; // Hilft beim rekursiven Löschen
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.FileSystemUtils;
 
 import com.sourakli.image_processing_service.model.Image;
 import com.sourakli.image_processing_service.repository.ImageRepository;
@@ -37,6 +41,13 @@ public class ImageSericeTest {
         // Problem: @Value("${image.upload.dir}") funktioniert in Unit Tests ohne Spring Context nicht.
         // Lösung: Wir setzen den Wert manuell per Reflection.
         ReflectionTestUtils.setField(imageService, "uploadDir", "test-uploads/");
+    }
+
+    @AfterEach
+    void tearDown() throws IOException {
+        // Löscht den Ordner "test-uploads/" und alles, was darin ist
+        Path path = Paths.get("test-uploads/");
+        FileSystemUtils.deleteRecursively(path);
     }
 
     /**
