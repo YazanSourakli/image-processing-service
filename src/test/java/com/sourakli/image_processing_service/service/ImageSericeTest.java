@@ -7,12 +7,15 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock; // Für die Checks (Asserts)
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify; // Für die Mocks (when, verify)
 import static org.mockito.Mockito.when;
@@ -80,5 +83,57 @@ public class ImageSericeTest {
         
         // Profi-Check: Wurde imageRepository.save() wirklich genau 1x aufgerufen?
         verify(imageRepository, times(1)).save(any(Image.class));
+    }
+
+    /**
+     * Testfall 2: Fehlerfall - Leere Datei
+     * Szenario: Eine Datei mit 0 Bytes wird hochgeladen.
+     * Erwartung: Der Service wirft eine IllegalArgumentException.
+     */
+    @Test
+    void testUploadImage_EmptyFile_ThrowsException() {
+        // 1. ARRANGE
+        MockMultipartFile emptyFile = new MockMultipartFile(
+                "file", 
+                "empty.jpg", 
+                "image/jpeg", 
+                new byte[0] // Leer!
+        );
+
+        // 2. ACT & ASSERT
+        // Wir prüfen: "Wenn ich das aufrufe, MUSS es knallen"
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            imageService.uploadImage(emptyFile);
+        });
+
+        // Optional: Prüfen, ob die Fehlermeldung stimmt
+        assertEquals("Die hochgeladene Datei darf nicht leer sein.", exception.getMessage());
+        
+        // WICHTIG: Sicherstellen, dass NICHTS gespeichert wurde
+        verify(imageRepository, never()).save(any());
+    }
+
+    /**
+     * Testfall 3: Fehlerfall - Falscher Dateityp
+     * Szenario: Eine Word-Datei wird hochgeladen.
+     * Erwartung: Exception wegen falschem MIME-Type.
+     */
+    @Test
+    void testUploadImage_WrongType_ThrowsException() {
+        // 1. ARRANGE
+        MockMultipartFile wrongFile = new MockMultipartFile(
+                "file", 
+                "test.docx", 
+                "application/msword", // Falscher Typ
+                "content".getBytes()
+        );
+
+        // 2. ACT & ASSERT
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            imageService.uploadImage(wrongFile);
+        });
+
+        assertTrue(exception.getMessage().contains("Ungültiger Dateityp"));
+        verify(imageRepository, never()).save(any());
     }
 }
