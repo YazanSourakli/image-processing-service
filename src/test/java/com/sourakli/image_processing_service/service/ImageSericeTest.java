@@ -1,8 +1,13 @@
 package com.sourakli.image_processing_service.service;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,20 +18,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
-import org.mockito.Mock; // Für die Checks (Asserts)
+import org.mockito.InjectMocks; // Für die Checks (Asserts)
+import org.mockito.Mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify; // Für die Mocks (when, verify)
+import static org.mockito.Mockito.times; // Für die Mocks (when, verify)
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile; // Hilft beim rekursiven Löschen
+import org.mockito.junit.jupiter.MockitoExtension; // Hilft beim rekursiven Löschen
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.FileSystemUtils;
 
 import com.sourakli.image_processing_service.model.Image;
 import com.sourakli.image_processing_service.repository.ImageRepository;
-
 
 @ExtendWith(MockitoExtension.class) // Sagt JUnit: "Nutze Mockito, um Mocks zu initialisieren"
 public class ImageSericeTest {
@@ -51,6 +55,18 @@ public class ImageSericeTest {
         // Löscht den Ordner "test-uploads/" und alles, was darin ist
         Path path = Paths.get("test-uploads/");
         FileSystemUtils.deleteRecursively(path);
+    }
+    // Hilfsmethode: Erstellt ein echtes Mini-Bild auf der Festplatte für Tests
+    private void createDummyFile(String filename) throws IOException {
+        Path path = Paths.get("test-uploads/");
+        if (!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
+        
+        // Ein 10x10 schwarzes Bild erstellen
+        BufferedImage img = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
+        File outputFile = new File("test-uploads/" + filename);
+        ImageIO.write(img, "jpg", outputFile);
     }
 
     /**
@@ -135,5 +151,77 @@ public class ImageSericeTest {
 
         assertTrue(exception.getMessage().contains("Ungültiger Dateityp"));
         verify(imageRepository, never()).save(any());
+    }
+    /**
+     * Testfall 4: Filter erfolgreich anwenden
+     * Szenario: Bild existiert, User will "grayscale".
+     * Erwartung: FilterService wird gerufen, neues Bild wird gespeichert.
+     */
+    @Test
+    void testApplyFilter_Grayscale_Success() throws IOException {
+        // 1. ARRANGE
+        // Wir brauchen eine echte Datei, sonst wirft ImageIO einen Fehler
+        String filename = "original.jpg";
+        createDummyFile(filename);
+
+        // Wir simulieren den DB-Eintrag
+        Image mockImage = Image.builder()
+                .id(1L)
+                .fileName(filename)
+                .url("test-uploads/" + filename) // Pfad zu unserem Dummy-Bild
+                .build();
+
+        // Wenn DB gefragt wird: Gib das Bild zurück
+        when(imageRepository.findById(1L)).thenReturn(java.util.Optional.of(mockImage));
+
+        // Wenn FilterService gefragt wird: Gib einfach das Original zurück (reicht für den Test)
+        when(filterService.applyGrayscale(any())).thenReturn(new BufferedImage(10, 10, BufferedImage.TYPE_BYTE_GRAY));
+        
+        // Mocking für save
+        when(imageRepository.save(any(Image.class))).thenReturn(Image.builder().fileName("new.jpg").build());
+
+        // 2. ACT
+        imageService.applyFilter(1L, "grayscale");
+
+        // 3. ASSERT
+        // Wurde der richtige Filter aufgerufen?
+        verify(filterService, times(1)).applyGrayscale(any());
+        // Wurde das Ergebnis gespeichert?
+        verify(imageRepository, times(1)).save(any(Image.class));
+    }
+
+    /**
+     * Testfall 5: Bild nicht gefunden
+     * Szenario: User gibt ID 99 an, die gibt es nicht.
+     * Erwartung: RuntimeException.
+     */
+    @Test
+    void testApplyFilter_ImageNotFound() {
+        // DB sagt: Nichts gefunden (Empty)
+        when(imageRepository.findById(99L)).thenReturn(java.util.Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> {
+            imageService.applyFilter(99L, "sepia");
+        });
+    }
+
+    /**
+     * Testfall 6: Ungültiger Filter
+     * Szenario: User will Filter "disco-lights" (gibt es nicht).
+     * Erwartung: IllegalArgumentException.
+     */
+    @Test
+    void testApplyFilter_InvalidFilterType() throws IOException {
+        // Datei erstellen & DB Mocken (damit wir bis zur Filter-Prüfung kommen)
+        String filename = "original.jpg";
+        createDummyFile(filename);
+        
+        Image mockImage = Image.builder().id(1L).url("test-uploads/" + filename).build();
+        when(imageRepository.findById(1L)).thenReturn(java.util.Optional.of(mockImage));
+
+        // Test
+        assertThrows(IllegalArgumentException.class, () -> {
+            imageService.applyFilter(1L, "disco-lights");
+        });
     }
 }
